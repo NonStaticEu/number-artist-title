@@ -26,7 +26,7 @@ def lombokVersion = '1.18.46'
 dependencies {
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")
     compileOnly("org.projectlombok:lombok:$lombokVersion")
-    implementation('eu.nonstatic:file-utils:1.0.0')
+    api('eu.nonstatic:file-utils:1.0.0')
 
     testImplementation(platform('org.junit:junit-bom:6.0.3'))
     testImplementation('org.junit.jupiter:junit-jupiter')
