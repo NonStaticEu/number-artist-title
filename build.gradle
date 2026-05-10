@@ -1,0 +1,77 @@
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'jacoco'
+    id 'maven-publish'
+    id "org.sonarqube" version "4.4.1.3373"
+}
+
+group = "eu.nonstatic"
+version = "1.0.0"
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+def lombokVersion = '1.18.46'
+
+dependencies {
+    annotationProcessor("org.projectlombok:lombok:$lombokVersion")
+    compileOnly("org.projectlombok:lombok:$lombokVersion")
+
+    testImplementation(platform('org.junit:junit-bom:6.0.3'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+}
+
+configurations.implementation {
+    exclude group: 'org.slf4j', module: 'slf4j-simple'
+}
+
+
+java {
+    sourceCompatibility = JavaVersion.toVersion("17")
+    targetCompatibility = JavaVersion.toVersion("17")
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.compilerArgs.add('-parameters')
+}
+
+
+// use JUnit 5 platform
+test {
+    testLogging.showStandardStreams = true
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        mavenLocal()
+        maven {
+            name = "GitHubPackages"
+            url = "https://maven.pkg.github.com/nonstaticeu/number-artist-title"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
