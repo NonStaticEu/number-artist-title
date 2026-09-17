@@ -9,6 +9,7 @@
  */
 package eu.nonstatic.nat;
 
+import static eu.nonstatic.util.StringUtils.emptyToNull;
 import static eu.nonstatic.util.StringUtils.trimToNull;
 
 import java.util.List;
@@ -46,32 +47,50 @@ public record ArtistTitle(String artist, String sep, String title, boolean multi
     this(artist, sep, title, false);
   }
 
-  public static ArtistTitle of(String str, @NonNull String sep) {
+  public static ArtistTitle ofExact(String str, @NonNull String sep) {
     if(str != null) {
-      Pattern pattern = getSeparatorPattern(sep); // https://www.regular-expressions.info/shorthand.html#more
-      Matcher matcher = pattern.matcher(str);
-      if(matcher.find()) {
-        int s = matcher.start();
-        int e = matcher.end();
-        String artist = str.substring(0, s);
-        String title = str.substring(e);
-        boolean multi = pattern.matcher(title).find();
-        return new ArtistTitle(trimToNull(artist), sep, trimToNull(title), multi);
+      int i = str.indexOf(sep);
+      if (i >= 0) {
+        String artist = str.substring(0, i);
+        String title = str.substring(i + sep.length());
+        boolean multi = title.contains(sep);
+        return new ArtistTitle(emptyToNull(artist), sep, emptyToNull(title), multi);
       }
     }
-    return new ArtistTitle(null, null, trimToNull(str), false);
+    return new ArtistTitle(null, null, emptyToNull(str), false);
   }
 
-  private static Pattern getSeparatorPattern(String sep) {
-    return switch (sep) {
+  public static ArtistTitle of(String str, @NonNull String sep) {
+    if(str != null) {
+      if(sep.trim().isEmpty()) {
+        return ofExact(str, sep);
+      } else {
+        Pattern pattern = getSeparatorPattern(sep); // https://www.regular-expressions.info/shorthand.html#more
+        Matcher matcher = pattern.matcher(str);
+        if(matcher.find()) {
+          int s = matcher.start();
+          int e = matcher.end();
+          String artist = str.substring(0, s);
+          String title = str.substring(e);
+          sep = str.substring(s, e);
+          boolean multi = pattern.matcher(title).find();
+          return new ArtistTitle(trimToNull(artist), sep, trimToNull(title), multi);
+        }
+      }
+    }
+    return new ArtistTitle(null, null, emptyToNull(str), false);
+  }
+
+  private static Pattern getSeparatorPattern(@NonNull String sep) {
+    return switch (sep.trim()) {
       case ARTIST_TITLE_SEPARATOR_HYPHEN -> PATTERN_SEPARATOR_HYPHEN;
       case ARTIST_TITLE_SEPARATOR_DASH -> PATTERN_SEPARATOR_DASH;
       default -> getSeparatorRegex(sep);
     };
   }
 
-  private static Pattern getSeparatorRegex(String sep) {
-    return Pattern.compile("\\h+" + sep + "\\h+");
+  private static Pattern getSeparatorRegex(@NonNull String sep) {
+    return Pattern.compile("\\h+" + sep.trim() + "\\h+");
   }
 
   public static ArtistTitle of(String str) {
@@ -82,6 +101,9 @@ public record ArtistTitle(String artist, String sep, String title, boolean multi
     return at;
   }
 
+  public String sepTrimmed() {
+    return sep != null ? sep.trim() : null;
+  }
 
   public ArtistTitle withArtist(String artist) {
     return new ArtistTitle(artist, sep, title, multi);

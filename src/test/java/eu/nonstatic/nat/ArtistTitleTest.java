@@ -11,6 +11,7 @@ package eu.nonstatic.nat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +23,8 @@ class ArtistTitleTest {
     ArtistTitle at = ArtistTitle.of(dirName);
     assertEquals("Matter-Energy-Space-Time", at.artist());
     assertEquals("M.E.S.T", at.title());
+    assertEquals("  -\t ", at.sep());
+    assertEquals(dirName, at.toArtistTitle());
   }
 
   @Test
@@ -30,5 +33,95 @@ class ArtistTitleTest {
     ArtistTitle at = ArtistTitle.of(dirName);
     assertNull(at.artist());
     assertEquals(dirName, at.title());
+    assertNull(at.sep());
+    assertEquals(dirName, at.toArtistTitle());
+  }
+
+  @Test
+  void shouldSplitRegex() {
+    String dirName = "Matter-Energy-Space-Time  -\t M.E.S.T";
+    ArtistTitle at = ArtistTitle.of(dirName, "-\t");
+    assertEquals("Matter-Energy-Space-Time", at.artist());
+    assertEquals("M.E.S.T", at.title());
+    assertEquals("  -\t ", at.sep());
+    assertEquals("-", at.sepTrimmed());
+    assertEquals(dirName, at.toArtistTitle());
+  }
+
+  @Test
+  void shouldSplitRegexTrimmable() {
+    String dirName = "Matter-Energy-Space-Time  -\t M.E.S.T";
+    ArtistTitle at = ArtistTitle.of(dirName, "\t");
+    assertEquals("Matter-Energy-Space-Time  -", at.artist());
+    assertEquals(" M.E.S.T", at.title());
+    assertEquals("\t", at.sep());
+    assertTrue(at.sepTrimmed().isEmpty());
+    assertEquals(dirName, at.toArtistTitle());
+  }
+
+  @Test
+  void shouldSplitRegexSpaced() {
+    String dirName = "         ";
+    ArtistTitle at = ArtistTitle.of(dirName, "€");
+    assertNull(at.artist());
+    assertEquals(dirName, at.title());
+    assertNull(at.sep());
+    assertNull(at.sepTrimmed());
+    assertEquals(dirName, at.toArtistTitle());
+  }
+
+  @Test
+  void shouldNotSplitRegex() {
+    String dirName = "Albert Hoffman Likes Biking";
+    ArtistTitle at = ArtistTitle.of(dirName, "€");
+    assertNull(at.artist());
+    assertEquals(dirName, at.title());
+    assertNull(at.sep());
+    assertNull(at.sepTrimmed());
+    assertEquals(dirName, at.toArtistTitle());
+  }
+
+  @Test
+  void shouldSplitExact() {
+    String dirName = "Matter-Energy-Space-Time  -\t M.E.S.T";
+    ArtistTitle at = ArtistTitle.ofExact(dirName, " -");
+    assertEquals("Matter-Energy-Space-Time ", at.artist());
+    assertEquals("\t M.E.S.T", at.title());
+    assertEquals(" -", at.sep());
+    assertEquals("-", at.sepTrimmed());
+    assertEquals(dirName, at.toArtistTitle());
+  }
+
+  @Test
+  void shouldSplitExactTrimmable() {
+    String dirName = "Matter-Energy-Space-Time\t  ";
+    ArtistTitle at = ArtistTitle.ofExact(dirName, "$");
+    assertNull(at.artist());
+    assertEquals("Matter-Energy-Space-Time\t  ", at.title());
+    assertNull(at.sep());
+    assertNull(at.sepTrimmed());
+    assertEquals(dirName, at.toArtistTitle());
+  }
+
+  @Test
+  void shouldSplitExactSpaced() {
+    String dirName = "         ";
+    ArtistTitle at = ArtistTitle.ofExact(dirName, "$");
+    assertNull(at.artist());
+    assertEquals("         ", at.title());
+    assertNull(at.sep());
+    assertNull(at.sepTrimmed());
+    assertEquals(dirName, at.toArtistTitle());
+  }
+
+  @Test
+  void shouldNotSplitExact() {
+    String dirName = "Albert Hoffman Likes Biking";
+    ArtistTitle at = ArtistTitle.ofExact(dirName, "-");
+    assertNull(at.artist());
+    assertEquals(dirName, at.title());
+    assertNull(at.sep());
+    assertNull(at.sepTrimmed());
+    assertEquals(dirName, at.toArtistTitle());
   }
 }
