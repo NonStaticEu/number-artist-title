@@ -22,7 +22,7 @@ public class Numberish implements Comparable<Numberish> {
   private final Integer numeric;
   private final String text; // if numeric, then text exists too
   @Getter
-  private boolean strict; // tell whether Numberish("1") equals Numberish("01")
+  private final boolean strict; // tell whether Numberish("1") equals Numberish("01")
 
   public Numberish(int numeric) {
     this(numeric, STRICT_DEFAULT);
