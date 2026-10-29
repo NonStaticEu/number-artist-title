@@ -32,10 +32,15 @@ public final class TrackNumberAndTotal extends NumberAndTotal {
   }
 
   public static boolean isValid(String raw) {
-    return NumberAndTotal.isValid(PATTERN, raw);
+    try {
+      parse(raw);
+      return true;
+    }  catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   public static TrackNumberAndTotal parse(String raw) {
-    return NumberAndTotal.parse(raw, EMPTY, TrackNumberAndTotal::new);
+    return NumberAndTotal.parse(raw, PATTERN, EMPTY, TrackNumberAndTotal::new);
   }
 }

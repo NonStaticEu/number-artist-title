@@ -27,16 +27,16 @@ public abstract class NumberAndTotal implements Comparable<NumberAndTotal> {
   private final @NonNull Numberish total;
 
 
-  public NumberAndTotal(@NonNull Numberish number, @NonNull Numberish total) {
+  protected NumberAndTotal(@NonNull Numberish number, @NonNull Numberish total) {
     switch (number.getType()) {
       case NUMERIC -> {
         if (number.isNegative()) { // 0 allows a "hidden track"
-          throw new IllegalArgumentException("Cannot have negative " + getUnit());
+          throw new IllegalArgumentException("Cannot have negative " + unit());
         }
       }
       case LITERAL -> {
         if (number.text().indexOf(TOTAL_SEPARATOR) >= 0) {
-          throw new IllegalArgumentException(getUnit() + " cannot contain '/'");
+          throw new IllegalArgumentException(unit() + " cannot contain '/'");
         }
       }
     }
@@ -47,11 +47,11 @@ public abstract class NumberAndTotal implements Comparable<NumberAndTotal> {
           throw new IllegalArgumentException("Cannot have zero or negative Total");
         }
         switch (number.getType()) {
-          case NULL -> throw new IllegalArgumentException("Cannot have a Total without a " + getUnit());
-          case LITERAL -> throw new IllegalArgumentException("Cannot have a Total when " + getUnit() + " is literal (%s)".formatted(number));
+          case NULL -> throw new IllegalArgumentException("Cannot have a Total without a " + unit());
+          case LITERAL -> throw new IllegalArgumentException("Cannot have a Total when " + unit() + " is literal (%s)".formatted(number));
           case NUMERIC -> {
             if (number.numeric() > total.numeric()) {
-              throw new IllegalArgumentException("Cannot have " + getUnit() + " (%s) > Total (%s)".formatted(number, total));
+              throw new IllegalArgumentException("Cannot have " + unit() + " (%s) > Total (%s)".formatted(number, total));
             }
           }
         }
@@ -62,16 +62,16 @@ public abstract class NumberAndTotal implements Comparable<NumberAndTotal> {
     this.total = total;
   }
 
-  protected String getUnit() {
-    return UNIT_NUMBER;
-  }
-
-  public NumberAndTotal(String number) {
+  protected NumberAndTotal(String number) {
     this(number, null);
   }
 
-  public NumberAndTotal(String number, String total) {
+  protected NumberAndTotal(String number, String total) {
     this(new Numberish(number), new Numberish(total));
+  }
+
+  protected String unit() {
+    return UNIT_NUMBER;
   }
 
   public Numberish number() {
@@ -98,23 +98,11 @@ public abstract class NumberAndTotal implements Comparable<NumberAndTotal> {
     return isNumber(num) && isTotal(tot);
   }
 
-  protected static boolean isValid(Pattern pattern, String raw) {
-    if (raw == null || raw.isEmpty()) { // by convention "" is valid
-      return true;
-    } else if (pattern.matcher(raw).matches()) {
-      try {
-        NumberAndTotal.parse(raw, null, (number, total) -> new NumberAndTotal(number, total) {}); // ctor just to trigger type checks / IAE
-        return true;
-      } catch (IllegalArgumentException e) {/* no need */}
-    }
-    return false;
-  }
-
-  protected static <N extends NumberAndTotal> N parse(String raw, N empty, BiFunction<String, String, N> creator) {
+  protected static <N extends NumberAndTotal> N parse(String raw, Pattern pattern, N empty, BiFunction<String, String, N> creator) {
     String text = trimToNull(raw);
     if (text == null) {
       return empty;
-    } else {
+    } else if(pattern.matcher(raw).matches()) { // raw: includes leading/trailing spaces
       int slash = text.indexOf(TOTAL_SEPARATOR);
       if (slash < 0) {
         return creator.apply(text, null);
@@ -124,6 +112,8 @@ public abstract class NumberAndTotal implements Comparable<NumberAndTotal> {
             text.substring(slash + 1)
         );
       }
+    } else {
+      throw new IllegalArgumentException("Cannot parse: " + raw);
     }
   }
 
@@ -154,7 +144,7 @@ public abstract class NumberAndTotal implements Comparable<NumberAndTotal> {
 
   public String formattedNum(int digits, boolean lenient) {
     if (number.isEmpty() && !lenient) {
-      throw new NumberFormatException(getUnit() + " is unavailable");
+      throw new NumberFormatException(unit() + " is unavailable");
     } else {
       return format(number, digits);
     }
@@ -191,9 +181,10 @@ public abstract class NumberAndTotal implements Comparable<NumberAndTotal> {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof NumberAndTotal that)) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
+    NumberAndTotal that = (NumberAndTotal) o;
     return Objects.equals(number, that.number) && Objects.equals(total, that.total);
   }
 

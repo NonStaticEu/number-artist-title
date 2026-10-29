@@ -38,15 +38,20 @@ public final class DiscNumberAndTotal extends NumberAndTotal {
   }
 
   @Override
-  protected String getUnit() {
+  protected String unit() {
     return UNIT_DISC;
   }
 
   public static boolean isValid(String raw) {
-    return NumberAndTotal.isValid(PATTERN, raw);
+    try {
+      parse(raw);
+      return true;
+    }  catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   public static DiscNumberAndTotal parse(String raw) {
-    return NumberAndTotal.parse(raw, EMPTY, DiscNumberAndTotal::new);
+    return NumberAndTotal.parse(raw, PATTERN, EMPTY, DiscNumberAndTotal::new);
   }
 }

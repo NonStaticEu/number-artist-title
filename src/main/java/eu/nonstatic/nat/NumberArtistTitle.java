@@ -9,14 +9,16 @@
  */
 package eu.nonstatic.nat;
 
+import eu.nonstatic.nat.ArtistTitle.ArtistTitleBuilder;
 import eu.nonstatic.utils.file.FileNameExt;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.NonNull;
 
-public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTitle artistTitle, String ext)
+public record NumberArtistTitle(@NonNull Numberish numberish, String numberArtistSep, @NonNull ArtistTitle artistTitle, String ext)
     implements Comparable<NumberArtistTitle> {
+
   // Keep ~aligned with TrackNumberAndTotal
   private static final Pattern TRACK_NUMBER_PATTERN = Pattern.compile("^([A-H]{1,2}\\d{0,2}\\b|\\d{2,3}\\b)?(.*)", Pattern.CASE_INSENSITIVE);
   public static final String NUMBER_ARTIST_SEPARATOR_DEFAULT = " ";
@@ -29,25 +31,9 @@ public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTit
   private static final String FILENAME_REPLACEMENT_OTHER = " ";
 
   public NumberArtistTitle {
-    if(numberish.isNegative()) {
+    if (numberish.isNegative()) {
       throw new IllegalArgumentException("Number is negative: " + numberish);
     }
-  }
-
-  public NumberArtistTitle(int number, String artist, String title) {
-    this(number, artist, title, null);
-  }
-
-  public NumberArtistTitle(int number, String artist, String title, String ext) {
-    this(new Numberish(number), new ArtistTitle(artist, title), ext);
-  }
-
-  public NumberArtistTitle(String number, String artist, String title) {
-    this(number, artist, title, null);
-  }
-
-  public NumberArtistTitle(String number, String artist, String title, String ext) {
-    this(new Numberish(number), new ArtistTitle(artist, title), ext);
   }
 
   public static NumberArtistTitle of(String fileName) {
@@ -61,9 +47,17 @@ public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTit
       // It will only fail when the track has no number and the artist begins with one, like "12 Moons - Northern Star"
       String g1 = matcher.group(1); // number
       String g2 = matcher.group(2); // [artist - ]title
-      return new NumberArtistTitle(new Numberish(g1), ArtistTitle.of(trimNumSep(g2)), fileNameExt.ext());
+      return NumberArtistTitle.builder()
+          .number(g1)
+          .numberArtistSeparator(NUMBER_ARTIST_SEPARATOR_DEFAULT)
+          .artistTitle(ArtistTitle.of(trimNumSep(g2)))
+          .ext(fileNameExt.ext())
+          .build();
     } else {
-      return new NumberArtistTitle(Numberish.EMPTY, ArtistTitle.of(fileNameExt.name()), fileNameExt.ext());
+      return NumberArtistTitle.builder()
+          .artistTitle(ArtistTitle.of(fileNameExt.name()))
+          .ext(fileNameExt.ext())
+          .build();
     }
   }
 
@@ -72,7 +66,7 @@ public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTit
     int i = 0;
     for (; i < chars.length; i++) {
       char c = chars[i];
-      if(!contains(c, NUMBER_ARTIST_SEPARATORS)) {
+      if (!contains(c, NUMBER_ARTIST_SEPARATORS)) {
         break;
       }
     }
@@ -86,6 +80,10 @@ public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTit
       }
     }
     return false;
+  }
+
+  public static NumberArtistTitleBuilder builder() {
+    return new NumberArtistTitleBuilder();
   }
 
 
@@ -111,36 +109,36 @@ public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTit
   }
 
   public NumberArtistTitle withNumber(@NonNull Numberish numberish) {
-    return new NumberArtistTitle(numberish, artistTitle, ext);
+    return new NumberArtistTitle(numberish, this.numberArtistSep, artistTitle, ext);
   }
 
   public NumberArtistTitle withArtist(String artist) {
-    return new NumberArtistTitle(numberish, artistTitle.withArtist(artist), ext);
+    return new NumberArtistTitle(numberish, this.numberArtistSep, artistTitle.withArtist(artist), ext);
   }
 
   public NumberArtistTitle withTitle(String title) {
-    return new NumberArtistTitle(numberish, artistTitle.withTitle(title), ext);
+    return new NumberArtistTitle(numberish, this.numberArtistSep, artistTitle.withTitle(title), ext);
   }
 
   public NumberArtistTitle withArtistTitle(@NonNull ArtistTitle artistTitle) {
-    return new NumberArtistTitle(numberish, artistTitle, ext);
+    return new NumberArtistTitle(numberish, this.numberArtistSep, artistTitle, ext);
   }
 
   public NumberArtistTitle withExt(String ext) {
-    return new NumberArtistTitle(numberish, artistTitle, ext);
+    return new NumberArtistTitle(numberish, this.numberArtistSep, artistTitle, ext);
   }
 
 
-  public String toNumberArtistTitle() {
+  public String toString() {
     StringBuilder sb = new StringBuilder();
-    if(!numberish.isEmpty()) {
+    if (!numberish.isEmpty()) {
       sb.append(numberish.text());
     }
 
-    String at = artistTitle.toArtistTitle();
-    if(!at.isEmpty()) {
-      if(!sb.isEmpty()) {
-        sb.append(NUMBER_ARTIST_SEPARATOR_DEFAULT);
+    String at = artistTitle.toString();
+    if (!at.isEmpty()) {
+      if (!sb.isEmpty() && numberArtistSep != null) {
+        sb.append(numberArtistSep);
       }
       sb.append(at);
     }
@@ -149,47 +147,46 @@ public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTit
   }
 
   public String toFileName() {
-    return new FileNameExt(sanitizeFileNameGeneric(toNumberArtistTitle()), ext).toFileName();
+    return new FileNameExt(sanitizeFileNameGeneric(toString()), ext).toFileName();
   }
 
 
   /**
-   * Transforms any string into a filesystem compatible one, with an opinionated replacement scheme
-   * Eg: ":abc/def* *ghi: jkl- mno \\/ pqr " => "-abc-def ghi - jkl- mno -- pqr"
+   * Transforms any string into a filesystem compatible one, with an opinionated replacement scheme Eg: ":abc/def* *ghi: jkl- mno \\/ pqr " => "-abc-def ghi - jkl- mno -- pqr"
    * There is a different algorithm on tools/FileUtils#escapeForFileName with a similar result except the ?>! substitution
    */
   private static String sanitizeFileName(CharSequence cs, Pattern pattern) {
     var sb = new StringBuilder();
 
     var matcher = pattern.matcher(cs);
-    while(matcher.find()) {
+    while (matcher.find()) {
       var repl = new StringBuilder();
       boolean spaced = false;
       for (char c : matcher.group().toCharArray()) {
-        if(c == ' ') {
-          if(!spaced) {
+        if (c == ' ') {
+          if (!spaced) {
             spaced = true;
             repl.append(FILENAME_REPLACEMENT_OTHER);
           }
-        } else if(c == ':') {
-          if(!spaced) {
+        } else if (c == ':') {
+          if (!spaced) {
             repl.append(FILENAME_REPLACEMENT_OTHER);
           }
           spaced = false;
           repl.append(FILENAME_REPLACEMENT_SEPARATOR);
-        } else if(c == '*') {
+        } else if (c == '*') {
           spaced = false;
           repl.append(FILENAME_REPLACEMENT_ASTERISK);
-        } else if(c == '?') {
+        } else if (c == '?') {
           spaced = false;
           repl.append(FILENAME_REPLACEMENT_QUESTION_MARK);
-        } else if(c == '/' || c == '\\') {
+        } else if (c == '/' || c == '\\') {
           spaced = false;
           repl.append(FILENAME_REPLACEMENT_SEPARATOR);
-        } else if(c == '"') {
+        } else if (c == '"') {
           spaced = false;
           repl.append(FILENAME_REPLACEMENT_QUOTE);
-        } else if(!spaced) {
+        } else if (!spaced) {
           spaced = true;
           repl.append(FILENAME_REPLACEMENT_OTHER);
         }
@@ -227,7 +224,7 @@ public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTit
   @Override
   public int compareTo(NumberArtistTitle nat) {
     int result = numberish.compareTo(nat.numberish);
-    if(result == 0) {
+    if (result == 0) {
       result = artistTitle.compareTo(nat.artistTitle);
     }
     return result;
@@ -235,9 +232,68 @@ public record NumberArtistTitle(@NonNull Numberish numberish, @NonNull ArtistTit
 
   public int compareToIgnoreCase(NumberArtistTitle nat) {
     int result = numberish.compareToIgnoreCase(nat.numberish);
-    if(result == 0) {
+    if (result == 0) {
       result = artistTitle.compareToIgnoreCase(nat.artistTitle);
     }
     return result;
+  }
+
+
+  public static class NumberArtistTitleBuilder {
+
+    private Numberish numberish = Numberish.EMPTY;
+    private String numberArtistSeparator = NUMBER_ARTIST_SEPARATOR_DEFAULT;
+    private ArtistTitleBuilder artistTitleBuilder = ArtistTitle.builder();
+    private String ext;
+
+    NumberArtistTitleBuilder() {
+    }
+
+    public NumberArtistTitleBuilder number(int number) {
+      return number(new Numberish(number));
+    }
+
+    public NumberArtistTitleBuilder number(String number) {
+      return number(new Numberish(number));
+    }
+
+    public NumberArtistTitleBuilder number(@NonNull Numberish numberish) {
+      this.numberish = numberish;
+      return this;
+    }
+
+    public NumberArtistTitleBuilder numberArtistSeparator(String numberArtistSeparator) {
+      this.numberArtistSeparator = numberArtistSeparator;
+      return this;
+    }
+
+    public NumberArtistTitleBuilder artist(String artist) {
+      artistTitleBuilder.artist(artist);
+      return this;
+    }
+
+    public NumberArtistTitleBuilder title(String title) {
+      artistTitleBuilder.title(title);
+      return this;
+    }
+
+    public NumberArtistTitleBuilder artistTitle(@NonNull ArtistTitle artistTitle) {
+      this.artistTitleBuilder = artistTitle.toBuilder();
+      return this;
+    }
+
+    public NumberArtistTitleBuilder artistTitleSeparator(String artistTitleSeparator) {
+      artistTitleBuilder.artistTitleSep(artistTitleSeparator);
+      return this;
+    }
+
+    public NumberArtistTitleBuilder ext(String ext) {
+      this.ext = ext;
+      return this;
+    }
+
+    public NumberArtistTitle build() {
+      return new NumberArtistTitle(this.numberish, this.numberArtistSeparator, this.artistTitleBuilder.build(), this.ext);
+    }
   }
 }

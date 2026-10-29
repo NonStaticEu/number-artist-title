@@ -13,6 +13,10 @@ public final class StringUtils {
 
   private StringUtils() {}
 
+  public static boolean isEmpty(String str) {
+    return str == null || str.isEmpty();
+  }
+
   public static String trimToNull(String s) {
     if(s != null) {
       s = s.trim();

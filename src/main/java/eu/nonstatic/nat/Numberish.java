@@ -125,7 +125,8 @@ public class Numberish implements Comparable<Numberish> {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(text);
+    // equals compares numerics by value, so "1" and "01" must hash alike
+    return getType() == Type.NUMERIC ? Integer.hashCode(numeric) : Objects.hashCode(text);
   }
 
   @Override

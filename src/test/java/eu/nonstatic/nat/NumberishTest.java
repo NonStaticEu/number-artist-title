@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class NumberishTest {
@@ -167,6 +168,7 @@ class NumberishTest {
     assertTrue(new Numberish("abc").is("abc"));
     assertTrue(new Numberish(42).is("42"));
     assertTrue(new Numberish("1").is("01")); // numeric comparison
+    assertFalse(new Numberish(1).is("abc"));
     assertFalse(new Numberish("abc").is("def"));
   }
 
@@ -243,6 +245,7 @@ class NumberishTest {
     // Non-literal types use regular compareTo
     assertTrue(new Numberish(1).compareToIgnoreCase(new Numberish(2)) < 0);
     assertEquals(0, new Numberish(null).compareToIgnoreCase(new Numberish("")));
+    assertTrue(new Numberish("a").compareToIgnoreCase(new Numberish(1)) > 0);
   }
 
   @Test
@@ -261,5 +264,12 @@ class NumberishTest {
     assertEquals("007", n.text());
     assertTrue(n.is("7"));
     assertTrue(n.is(7));
+  }
+
+  @Test
+  void testHashCodeConsistentWithEquals() {
+    assertEquals(new Numberish(1).hashCode(), new Numberish("01").hashCode());
+    assertEquals(new Numberish("007").hashCode(), new Numberish("7", true).hashCode());
+    assertTrue(Set.of(new Numberish("01")).contains(new Numberish(1)));
   }
 }
